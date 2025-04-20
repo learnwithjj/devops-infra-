@@ -1,0 +1,56 @@
+name: Create New Github Repository
+on:
+  issues:
+    types:
+     - opened
+     - edited
+jobs:
+  create_github_repository:
+    if: contains(github.event.issue.labels.*.name, 'create_repository') || github.event_name == 'workflow_dispatch'
+    name: Create New Github Repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: develop
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - uses: stefanbuck/github-issue-parser@v3
+        id: issue-parser
+        with:
+          template-path: .github/ISSUE_TEMPLATE/CREATE-NEW-REPOSITORY.yml
+      - name: echo inputs
+        shell: bash
+        env: 
+          REPOSITORY: ${{ steps.issue-parser.outputs.issueparser_repository }}
+          DESCRIPTION: ${{ steps.issue-parser.outputs.issueparser_description }}
+          REPOSITORY_WORKFLOW_DISPATCH: ${{ inputs.repository }}
+          DESCRIPTION_WORKFLOW_DISPATCH: ${{ inputs.description }}
+        run: |
+           if [[ "${{ github.event_name }}" == "issues" ]]; then
+             echo "REPOSITORY=$REPOSITORY" >> $GITHUB_ENV
+             echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_ENV
+           else
+             echo "REPOSITORY=$REPOSITORY_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+             echo "DESCRIPTION=$DESCRIPTION_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+           fi
+      - uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/susanto-dev/projects/4
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+      - uses: actions/github-script@v7
+        if: github.event_name == 'issues'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: ' 👋 Thanks for opening an issue. It will be addressed soon'
+            })
+

@@ -1,0 +1,33 @@
+name: "Approve Environment deployments"
+description: Approve Github Repository specific Environment deployments
+title: Approve Environment deployments
+labels: "approve_env_deployments"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this form!
+  - type: input
+    id: reponame
+    attributes:
+      label: "Gitub Repository"
+      description: "Give name of the github repository"
+      placeholder: "react-native-component"
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: "Environment name"
+      description: "Choose your environment"
+      options:
+       - dev
+       - uat
+       - prod
+      default: 0
+  - type: input
+    id: run_id
+    attributes:
+      label: "Gitub Job Run ID"
+      description: "Example: https://github.com/susanto-dev/java-component/actions/runs/14105632524 -- 14105632524 is the job run id here"
+      placeholder: "14105632524"

@@ -1,0 +1,56 @@
+name: Create New Github Repository
+on:
+  issues:
+    types:
+     - opened
+     - edited
+jobs:
+  create_github_repository:
+    if: contains(github.event.issue.labels.*.name, 'create_team') || github.event_name == 'workflow_dispatch'
+    name: Create New Github Team
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: develop
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - uses: stefanbuck/github-issue-parser@v3
+        id: issue-parser
+        with:
+          template-path: .github/ISSUE_TEMPLATE/CREATE-NEW-TEAM.yml
+      - name: echo inputs
+        shell: bash
+        env: 
+          TEAM: ${{ steps.issue-parser.outputs.issueparser_team }}
+          PERMISSION: ${{ steps.issue-parser.outputs.issueparser_permission }}
+          TEAM_WORKFLOW_DISPATCH: ${{ inputs.team }}
+          PERMISSION_WORKFLOW_DISPATCH: ${{ inputs.permission }}
+        run: |
+           if [[ "${{ github.event_name }}" == "issues" ]]; then
+             echo "TEAM=$TEAM" >> $GITHUB_ENV
+             echo "PERMISSION=$PERMISSION" >> $GITHUB_ENV
+           else
+             echo "TEAM=$TEAM_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+             echo "PERMISSION=$PERMISSION_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+           fi
+      - uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/susanto-dev/projects/4
+          github-token: ${{ secrets.ACCESS_TOKEN }}
+      - uses: actions/github-script@v7
+        if: github.event_name == 'issues'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: ' 👋 Thanks for opening an issue. It will be addressed soon'
+            })
+

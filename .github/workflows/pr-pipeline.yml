@@ -1,0 +1,112 @@
+name: PR pipeline for JAVA and React Native
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        default: ""
+        type: string
+jobs:
+  build:
+    name: PR Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          repository: susanto-dev/devops-infra
+          fetch-depth: 0
+          path: .devops
+          ref: develop
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.4xx'
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.1.11
+        with:
+          versionSpec: '5.12.0'
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3.1.11
+        with:
+           useConfigFile: true
+           configFilePath: ./.devops/GitVersion/GitVersion.yml
+
+      - name: Setup node
+        if: ${{ inputs.component == 'react-native' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install npm dependencies
+        if: ${{ inputs.component == 'react-native'}}
+        run: |
+          npm install
+
+      - name: Setup Gradle
+        if: ${{ inputs.component == 'react-native' }}
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          add-job-summary: 'on-failure'
+
+      - name: Cache Gradle Wrapper
+        if: ${{ inputs.component == 'react-native'}}
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Cache Gradle Dependencies
+        if: ${{ inputs.component == 'react-native' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-caches-
+
+      - name: Restore node_modules from cache
+        if: ${{ inputs.component == 'react-native' }}
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-node-modules-
+
+      - name: Install node_modules
+        if: ${{ inputs.component == 'react-native' }}
+        run: yarn install --immutable
+
+      - name: Build Android Release
+        if: ${{ inputs.component == 'react-native' }}
+        shell: bash
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease -PAPK_VERSION=${{ steps.gitversion.outputs.SemVer }} --no-daemon
+
+      - name: Build Maven
+        if: ${{ inputs.component == 'java' }}
+        shell: bash
+        run: |
+          chmod +x ./mvnw
+          ./mvnw --batch-mode clean package

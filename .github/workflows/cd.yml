@@ -1,0 +1,146 @@
+name: Continuous deployment
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        required: true
+        default: ""
+        type: string
+      version:
+        required: true
+        default: ""
+        type: string
+      environment:
+        required: true
+        default: ""
+        type: string
+      component:
+        required: true
+        default: ""
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'Give repository name'
+        required: true
+        default: 'java-component'
+      version:
+        description: 'Give package version'
+        required: true
+        default: '0.1.0-alpha.58'
+      environment:
+        description: 'Which env to deploy to?'
+        required: true
+        default: 'dev'
+      component:
+        description: 'Which component'
+        required: true
+        default: 'java'
+        type: choice
+        options:
+        - java
+        - react-native
+
+jobs:
+  build:
+    name: CD
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: main
+      - name: Echo inputs
+        shell: bash
+        run: |
+          echo "Repository: ${{ inputs.repository }}"
+          echo "compoennt: ${{ inputs.component }}"
+          echo "environment: ${{ inputs.environment }}"
+          echo "version: ${{ inputs.version }}"
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+      - name: Authenticate with github package
+        shell: bash
+        env:
+          GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          rm ~/.m2/settings.xml
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+           <server>
+            <id>github</id>
+            <username>${GITHUB_ACTOR}</username>
+            <password>${GITHUB_TOKEN}</password>
+           </server>
+          </servers>
+          </settings>
+          EOF
+
+      - name: Download Artifact from GitHub Packages
+        env:
+          GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          REPOSITORY: ${{ inputs.repository }}
+          VERSION: ${{ inputs.version }}
+          COMPONENT: ${{ inputs.component }}
+        run: |
+           if [ $COMPONENT == "java" ]; then
+            echo "Download jar"
+            curl -O -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://maven.pkg.github.com/susanto-dev/$REPOSITORY/com/example/$REPOSITORY/$VERSION/$REPOSITORY-$VERSION.jar
+           else
+            echo "Download apk"
+            curl -O -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://maven.pkg.github.com/susanto-dev/$REPOSITORY/com/example/$REPOSITORY/$VERSION/$REPOSITORY-$VERSION.apk
+           fi
+
+           echo "Download pom"
+           curl -O -L \
+           -H "Accept: application/vnd.github+json" \
+           -H "Authorization: Bearer $GITHUB_TOKEN" \
+           -H "X-GitHub-Api-Version: 2022-11-28" \
+           https://maven.pkg.github.com/susanto-dev/$REPOSITORY/com/example/$REPOSITORY/$VERSION/$REPOSITORY-$VERSION.pom
+           ls
+
+      - name: Deploy with env name
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          REPOSITORY: ${{ inputs.repository }}
+          VERSION: ${{ inputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          COMPONENT: ${{ inputs.component }}
+        run: |
+
+         if [ $COMPONENT == "java" ]; then
+           filename="./$REPOSITORY-$VERSION.jar"
+         else
+           filename="./$REPOSITORY-$VERSION.apk"
+         fi
+         mvn deploy:deploy-file -Dfile=$filename \
+         -DgroupId=com.example \
+         -DartifactId=$REPOSITORY-$ENVIRONMENT \
+         -Dversion=$VERSION \
+         -DpomFile=./$REPOSITORY-$VERSION.pom \
+         -DrepositoryId=github \
+         -Durl=https://maven.pkg.github.com/susanto-dev/$REPOSITORY \
+         -Dtoken=$GITHUB_TOKEN -s ~/.m2/settings.xml

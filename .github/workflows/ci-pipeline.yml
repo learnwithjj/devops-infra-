@@ -1,0 +1,174 @@
+name: CI pipeline for JAVA and React Native
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        default: ""
+        type: string
+    outputs:
+      build_version:
+        description: "Build version"
+        value: ${{ jobs.build.outputs.build_version }}
+
+jobs:
+  build:
+    name: CI Build & publish
+    runs-on: ubuntu-latest
+    outputs:
+      build_version: ${{ steps.output_version.outputs.version }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          repository: susanto-dev/devops-infra
+          fetch-depth: 0
+          path: .devops
+          ref: develop
+          token: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+      - name: Setup Dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.4xx'
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.1.11
+        with:
+          versionSpec: '5.12.0'
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3.1.11
+        with:
+           useConfigFile: true
+           configFilePath: ./.devops/GitVersion/GitVersion.yml
+      - name: Setup node
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+      - name: Install npm dependencies
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        run: |
+          npm install
+      - name: Setup Gradle
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          add-job-summary: 'on-failure'
+      - name: Cache Gradle Wrapper
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Cache Gradle Dependencies
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-caches-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-caches-
+
+      - name: Restore node_modules from cache
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-node-modules-
+
+      - name: Install node_modules
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        run: |
+           yarn install --immutable
+
+      - name: Output version
+        id: output_version
+        shell: bash
+        run: |
+          echo "version=${{ steps.gitversion.outputs.SemVer }}" >> $GITHUB_OUTPUT
+
+      - name: Build Android Release
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease -PAPK_VERSION=${{ steps.gitversion.outputs.SemVer }} --no-daemon
+      - name: Authenticate with github package
+        shell: bash
+        env:
+          GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          rm ~/.m2/settings.xml
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+           <server>
+            <id>github</id>
+            <username>${GITHUB_ACTOR}</username>
+            <password>${GITHUB_TOKEN}</password>
+           </server>
+          </servers>
+          </settings>
+          EOF
+#      - name: Save android apk file to github packages
+#        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+#        shell: bash
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          cd android
+#          chmod +x ./gradlew
+#          ./gradlew -PAPK_VERSION=${{ steps.gitversion.outputs.SemVer }} publish
+      - name: Publish APK to GitHub Packages
+        if: ${{ inputs.component == 'react-native' && github.ref == 'refs/heads/main' }}
+        run: |
+          mvn deploy:deploy-file \
+            -Dfile=android/app/build/outputs/apk/release/app-release.apk \
+            -DgroupId=com.example \
+            -DartifactId=react-native-component \
+            -Dversion=${{ steps.gitversion.outputs.SemVer }} \
+            -DrepositoryId=github \
+            -Durl=https://maven.pkg.github.com/susanto-dev/react-native-component \
+            -s ~/.m2/settings.xml
+
+      - name: Update Maven version in pom.xml
+        if: ${{ inputs.component == 'java' && github.ref == 'refs/heads/main' }}
+        run: |
+           mvn versions:set-property -Dproperty=revision -DnewVersion=${{ steps.gitversion.outputs.SemVer }} -DgenerateBackupPoms=false
+
+      - name: Build Maven
+        if: ${{ inputs.component == 'java' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+           chmod +x ./mvnw
+           ./mvnw --batch-mode clean package
+
+      - name: Publish to github packages
+        if: ${{ inputs.component == 'java' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+           chmod +x ./mvnw
+           ./mvnw --batch-mode deploy

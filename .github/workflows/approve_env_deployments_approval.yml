@@ -1,0 +1,139 @@
+name: Approve Environment deployments approval
+on:
+  issue_comment:
+    types:
+     - created
+     - edited
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Github Repository"
+        required: true
+        type: string
+      environment:
+        type: choice
+        description: "Provide which environment"
+        options:
+         - dev
+         - uat
+         - prod
+      run_id:
+        description: "Github Deployment run ID"
+        required: true
+        type: string
+jobs:
+  approve_env_deployments:
+    if: (contains(github.event.issue.labels.*.name, 'approve_env_deployments') && contains(github.event.comment.body, '/approve')) || github.event_name == 'workflow_dispatch'
+    name: Approve Github Repository Specific Deployments
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACCESS_TOKEN }}
+          ref: develop
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - uses: stefanbuck/github-issue-parser@v3
+        id: issue-parser
+        with:
+          template-path: .github/ISSUE_TEMPLATE/APPROVE-ENVIRONMENT-DEPLOYMENTS.yml
+      - name: echo inputs
+        shell: bash
+        env: 
+          REPOSITORY: ${{ steps.issue-parser.outputs.issueparser_reponame }}
+          ENVIRONMENT: ${{ steps.issue-parser.outputs.issueparser_environment }}
+          RUN_ID: ${{ steps.issue-parser.outputs.issueparser_run_id }}
+          REPOSITORY_WORKFLOW_DISPATCH: ${{ inputs.reponame }}
+          ENVIRONMENT_WORKFLOW_DISPATCH: ${{ inputs.environment }}
+          RUN_ID_WORKFLOW_DISPATCH: ${{ inputs.run_id }}
+        run: |
+           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+             echo "REPOSITORY=$REPOSITORY" >> $GITHUB_ENV
+             echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+             echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+           else
+             echo "REPOSITORY=$REPOSITORY_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+             echo "ENVIRONMENT=$ENVIRONMENT_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+             echo "RUN_ID_WORKFLOW_DISPATCH=$RUN_ID_WORKFLOW_DISPATCH" >> $GITHUB_ENV
+           fi
+      - name: Get commenter's permission in the team
+        if: github.event_name == 'issue_comment'
+        id: check-permission
+        env:
+         GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+         COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          if [ "$ENVIRONMENT" == "dev" ]; then
+            team="Developers"
+          elif [ "$ENVIRONMENT" == "uat" ]; then
+            team="UAT"
+          else
+            team="Leads"
+          fi
+          check_permission=$(curl -s -H \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/orgs/susanto-dev/teams/$team/memberships/$COMMENTER | jq -r '.state' )
+
+          if [[ "$check_permission" == "active" ]];then
+            echo "PERMISSION=true" >> $GITHUB_ENV
+          else
+            echo "PERMISSION=false" >> $GITHUB_ENV
+          fi
+      - uses: actions/github-script@v7
+        if: github.event_name == 'issue_comment' && env.PERMISSION == 'false'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'You have insufficient permission to approve environment deployments'
+            })
+
+      - name: Approve Environment deployments approval
+        if: (github.event_name == 'issue_comment' && env.PERMISSION == 'true' ) || (github.event_name == 'workflow_dispatch')
+        shell: bash
+        env:
+         GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          ## Get the environment specific deployment id
+          pending_deployments=$(curl -s -H\
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+           https://api.github.com/repos/susanto-dev/$REPOSITORY/actions/runs/$RUN_ID/pending_deployments )
+          echo "$pending_deployments"
+          env_id=$(echo "$pending_deployments" | jq -r --arg env "$ENVIRONMENT" '.[] | select(.environment.name == $env) | .environment.id')
+
+          http_response=$(curl -s -w "%{http_code}" -o response.json \
+           -X POST \
+           -H "Accept: application/vnd.github+json" \
+           -H "Authorization: Bearer $GITHUB_TOKEN" \
+           -H "X-GitHub-Api-Version: 2022-11-28" \
+           https://api.github.com/repos/susanto-dev/$REPOSITORY/actions/runs/$RUN_ID/pending_deployments \
+           -d "{\"environment_ids\":[$env_id],\"state\":\"approved\",\"comment\":\"Ship it!\"}")
+
+           echo "RESPONSE=$http_response" >> $GITHUB_ENV
+           cat response.json
+      - uses: actions/github-script@v7
+        if: github.event_name == 'issue_comment' && env.PERMISSION == 'true' && env.RESPONSE == '200'
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✨Deployment has been approved!'
+            })
+            github.rest.issues.update({
+             ...context.repo,
+             issue_number: context.issue.number,
+             state: "closed"
+            })
+

@@ -1,0 +1,27 @@
+name: "Add github user to a team"
+description: Add github user to a team
+title: Add github user to a team
+labels: "add_user_to_team"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this form!
+  - type: input
+    id: user
+    attributes:
+      label: "Github username"
+      description: "Give your github username"
+    validations:
+      required: true
+  - type: dropdown
+    id: team_name
+    attributes:
+      label: "Select your team"
+      description: "Which team?"
+      options:
+        - Leads
+        - Developers
+      default: 0
+    validations:
+      required: true

@@ -1,0 +1,28 @@
+name: "Create a new Github team "
+description: Create a new GITHUB team
+title: Create a new team
+labels: create_team
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this Github repository request form!
+  - type: input
+    id: team
+    attributes:
+      label: "Gitub Team Name"
+      description: "Give name of your new github team"
+      placeholder: "QA"
+    validations:
+      required: true
+  - type: dropdown
+    id: permission
+    attributes:
+      label: "Permission"
+      description: "Type of permission to this team"
+      options:
+        - pull
+        - push
+      default: 0
+    validations:
+      required: true
