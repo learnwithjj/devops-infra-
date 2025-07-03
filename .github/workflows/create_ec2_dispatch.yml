@@ -2,8 +2,8 @@ name: Provision EC2 dispatch
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: Environment name
+      ENVIRONMENT:
+        description: ENVIRONMENT name
         required: true
         default: 'dev'
         type: choice
@@ -34,9 +34,9 @@ on:
 
 jobs:
   provision-ec2:
-    name: povision ec2
+    name: provision ec2
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
     permissions:
       id-token: write
       contents: read
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '14'
 
-     - name: Setup Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
@@ -72,15 +72,15 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/devops-infra-role
-          role-session-name: ${{ inputs.environment }}-${{ github.run_id }}
+          role-session-name: ${{ inputs.ENVIRONMENT }}-${{ github.run_id }}
 
       - name: Echo input
         shell: bash
         env:
-          ENVIRONMENT: ${{ inputs.environment }}
+          ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
           EC2: ${{ inputs.ec2-name }}
         run: |
-          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "environment=$ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
           echo "EC2=$EC2" >> $GITHUB_STEP_SUMMARY
 
       - name: Terraform Apply
@@ -88,11 +88,11 @@ jobs:
           EC2: ${{ inputs.ec2-name }}
           S3-BUCKET: ${{ vars.S3_BUCKET }}
           REGION: ${{ vars.AWS_REGION }}
-          ENVIRONMENT: ${{ inputs.environment }}
+          ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
         run: |
           cd ec2
           echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
-          echo "environment=\"$ENVIRONMENT\"" >> default.auto.tfvars
+          echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
           terraform init -backend-config="bucket=$S3-BUCKET" \
                -backend-config="key=github/" \
