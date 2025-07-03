@@ -1,0 +1,107 @@
+name: Provision EC2 dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment name
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+         - dev
+         - qa
+      ec2-name:
+        description: EC2 name
+        required: true
+        default: 'Sample'
+        type: string
+      TF_LOG_LEVEL:
+        description: TF LOG level
+        default: 'WARN'
+        required: true
+        type: choice
+        options:
+         - WARN
+         - INFO
+      TF_ACTION:
+        description: TF Action
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+         - plan
+         - apply
+
+jobs:
+  provision-ec2:
+    name: povision ec2
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+
+     - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: "1.1.7"
+
+      - uses: terraform-linters/setup-tflint@v4
+        name: Setup TFLint
+        with:
+          tflint_version: v0.52.0
+
+      - name: Show version and run tflint
+        shell: bash
+        env:
+         GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+         cd ec2
+         tflint --version
+         tflint --init
+         tflint
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/devops-infra-role
+          role-session-name: ${{ inputs.environment }}-${{ github.run_id }}
+
+      - name: Echo input
+        shell: bash
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          EC2: ${{ inputs.ec2-name }}
+        run: |
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "EC2=$EC2" >> $GITHUB_STEP_SUMMARY
+
+      - name: Terraform Apply
+        env:
+          EC2: ${{ inputs.ec2-name }}
+          S3-BUCKET: ${{ vars.S3_BUCKET }}
+          REGION: ${{ vars.AWS_REGION }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          cd ec2
+          echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
+          echo "environment=\"$ENVIRONMENT\"" >> default.auto.tfvars
+          echo "---------------terraform init-------------------"
+          terraform init -backend-config="bucket=$S3-BUCKET" \
+               -backend-config="key=github/" \
+               -backend-config="region=$REGION"
+          echo "---------------terraform validate---------------------"
+          terraform validate
+          echo "---------------terraform ${{ github.event.inputs.TF_ACTION }}-------------------"
+          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan"];then
+             terraform ${{ github.event.inputs.TF_ACTION }}
+          else
+             terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
+          fi
