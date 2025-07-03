@@ -36,7 +36,7 @@ jobs:
   provision-ec2:
     name: provision ec2
     runs-on: ubuntu-latest
-    ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    environment: ${{ inputs.ENVIRONMENT }}
     permissions:
       id-token: write
       contents: read
