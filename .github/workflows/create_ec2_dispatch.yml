@@ -36,7 +36,7 @@ jobs:
   provision-ec2:
     name: povision ec2
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event.inputs.environment }}
     permissions:
       id-token: write
       contents: read
