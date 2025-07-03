@@ -93,8 +93,15 @@ jobs:
           cd ec2
           echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
           echo "environment=\"$ENVIRONMENT\"" >> default.auto.tfvars
+          echo "---------------terraform init-------------------"
           terraform init -backend-config="bucket=$S3-BUCKET" \
                -backend-config="key=github/" \
                -backend-config="region=$REGION"
+          echo "---------------terraform validate---------------------"
           terraform validate
-          terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
+          echo "---------------terraform ${{ github.event.inputs.TF_ACTION }}-------------------"
+          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan"];then
+             terraform ${{ github.event.inputs.TF_ACTION }}
+          else
+             terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
+          fi
