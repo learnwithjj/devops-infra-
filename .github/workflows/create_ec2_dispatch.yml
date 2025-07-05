@@ -86,7 +86,7 @@ jobs:
       - name: Terraform Apply
         env:
           EC2: ${{ inputs.ec2-name }}
-          S3-BUCKET: ${{ vars.S3_BUCKET }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
           REGION: ${{ vars.AWS_REGION }}
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
         run: |
@@ -94,7 +94,7 @@ jobs:
           echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
           echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
-          terraform init -backend-config="bucket=$S3-BUCKET" \
+          terraform init -backend-config="bucket=$S3_BUCKET" \
                -backend-config="key=github" \
                -backend-config="region=$REGION"
           echo "---------------terraform validate---------------------"
