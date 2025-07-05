@@ -95,7 +95,7 @@ jobs:
           echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
           terraform init -backend-config="bucket=$S3-BUCKET" \
-               -backend-config="key=github/" \
+               -backend-config="key=github" \
                -backend-config="region=$REGION"
           echo "---------------terraform validate---------------------"
           terraform validate
