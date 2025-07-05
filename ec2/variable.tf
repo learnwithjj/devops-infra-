@@ -1,4 +1,4 @@
-variale "ec2_name" {
+variable "ec2_name" {
   default = "sample"
   type    = string
 }
