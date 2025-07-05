@@ -8,7 +8,4 @@ variable "environment" {
   type    = string
 }
 
-variable "role_arn"{
- type = string
-  default = ""
-}
+
