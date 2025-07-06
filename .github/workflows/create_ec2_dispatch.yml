@@ -71,7 +71,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
           aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/devops-infra-oidc
+          role-to-assume: arn:aws:iam::${{ vars.ACCOUNT_ID }}:role/devops-infra-role
           role-session-name: ${{ inputs.ENVIRONMENT }}-${{ github.run_id }}
 
       - name: Echo input
