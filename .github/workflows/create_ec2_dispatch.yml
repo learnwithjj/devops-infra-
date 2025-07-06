@@ -31,12 +31,13 @@ on:
         options:
          - plan
          - apply
+         - destroy
 
 jobs:
   provision-ec2:
     name: provision ec2
     runs-on: ubuntu-latest
-    ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    environment: ${{ inputs.ENVIRONMENT }}
     permissions:
       id-token: write
       contents: read
@@ -50,7 +51,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-          terraform_version: "1.1.7"
+          terraform_version: "1.12.0"
 
       - uses: terraform-linters/setup-tflint@v4
         name: Setup TFLint
@@ -86,22 +87,24 @@ jobs:
       - name: Terraform Apply
         env:
           EC2: ${{ inputs.ec2-name }}
-          S3-BUCKET: ${{ vars.S3_BUCKET }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
           REGION: ${{ vars.AWS_REGION }}
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
         run: |
           cd ec2
           echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
           echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
+          echo "role_arn=\"${{ vars.ROLE_ARN }}\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
-          terraform init -backend-config="bucket=$S3-BUCKET" \
-               -backend-config="key=github/" \
+          terraform init -backend-config="bucket=$S3_BUCKET" \
+               -backend-config="key=github/terraform.tfstate" \
                -backend-config="region=$REGION"
           echo "---------------terraform validate---------------------"
           terraform validate
           echo "---------------terraform ${{ github.event.inputs.TF_ACTION }}-------------------"
-          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan"];then
-             terraform ${{ github.event.inputs.TF_ACTION }}
+          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan" ]; then
+            terraform plan
           else
-             terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
+            terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
           fi
+
