@@ -101,8 +101,9 @@ jobs:
           echo "---------------terraform validate---------------------"
           terraform validate
           echo "---------------terraform ${{ github.event.inputs.TF_ACTION }}-------------------"
-          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan"];then
-             terraform ${{ github.event.inputs.TF_ACTION }}
+          if [ "${{ github.event.inputs.TF_ACTION }}" == "plan" ]; then
+            terraform plan
           else
-             terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
+            terraform ${{ github.event.inputs.TF_ACTION }} -auto-approve
           fi
+
