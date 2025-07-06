@@ -9,8 +9,3 @@ terraform {
   }
 }
 
-provider "aws" {
-  assume_role {
-    role_arn = "arn:aws:iam::178734969934:role/devops-infra-role"
-  }
-}
