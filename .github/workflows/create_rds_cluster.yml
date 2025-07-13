@@ -105,7 +105,7 @@ jobs:
           echo "role_arn=\"${{ vars.ROLE_ARN }}\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
           terraform init -backend-config="bucket=$S3_BUCKET" \
-               -backend-config="key=github/ec2/$ENVIRONMENT/terraform.tfstate" \
+               -backend-config="key=github/rds/$ENVIRONMENT/terraform.tfstate" \
                -backend-config="region=$REGION"
           echo "---------------terraform validate---------------------"
           terraform validate
