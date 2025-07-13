@@ -8,6 +8,8 @@ module "rds" {
   vpc_id         = data.aws_vpc.default.id
   environment    = var.environment
   instance_count = var.instance_count
+  rds_username   = var.rds_username
+  rds_password   = var.rds_password
 }
 
 

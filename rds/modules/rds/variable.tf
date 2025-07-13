@@ -18,3 +18,12 @@ variable "instance_count" {
   type    = number
 }
 
+variable "rds_username" {
+  default = ""
+  type    = string
+}
+
+variable "rds_password" {
+  default = ""
+  type    = string
+}
