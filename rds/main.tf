@@ -3,6 +3,7 @@ data "aws_vpc" "default" {
 }
 
 module "rds" {
+  source         = "modules/rds/"
   rds_name       = var.rds_name
   vpc_id         = data.aws_vpc.default.id
   environment    = var.environment
@@ -11,6 +12,7 @@ module "rds" {
 
 
 module "ec2" {
+  source      = "modules/ec2/"
   ec2_name    = var.ec2_name
   environment = var.environment
   vpc_id      = data.aws_vpc.default.id
