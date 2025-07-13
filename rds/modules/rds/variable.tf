@@ -9,7 +9,7 @@ variable "environment" {
 }
 
 variable "vpc_id" {
-  default = "dev"
+  default = ""
   type    = string
 }
 

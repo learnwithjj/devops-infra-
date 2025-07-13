@@ -20,8 +20,7 @@ resource "aws_subnet" "example" {
 resource "aws_security_group" "bastion_sg" {
   name        = "bastion-sg-${var.environment}"
   description = "Allow SSH from your IP"
-  vpc_id      = module.vpc.vpc_id
-
+  vpc_id      = var.vpc_id
   egress {
     from_port   = 0
     to_port     = 0
