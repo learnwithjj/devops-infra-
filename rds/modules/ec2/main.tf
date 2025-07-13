@@ -1,5 +1,5 @@
 resource "aws_instance" "jumpbox" {
-  ami           = data.aws_ami.ubuntu.id
+  ami           = data.aws_ami.ubuntu.id 
   instance_type = "t3.micro"
   key_name      = "app-ssh-key"
   tags = {
@@ -29,6 +29,5 @@ resource "aws_security_group" "bastion_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 
