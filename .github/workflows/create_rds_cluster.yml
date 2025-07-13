@@ -1,4 +1,4 @@
-name: Provision EC2 dispatch
+name: Provision RDS EC2 
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +12,11 @@ on:
          - qa
       ec2-name:
         description: EC2 name
+        required: true
+        default: 'Sample'
+        type: string
+      rds-name:
+        description: RDS name
         required: true
         default: 'Sample'
         type: string
@@ -34,8 +39,8 @@ on:
          - destroy
 
 jobs:
-  provision-ec2:
-    name: provision ec2
+  provision-ec2-rds:
+    name: provision rds ec2
     runs-on: ubuntu-latest
     environment: ${{ inputs.ENVIRONMENT }}
     permissions:
@@ -63,7 +68,7 @@ jobs:
         env:
          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
-         cd ec2
+         cd rds
          tflint --version
          tflint --init
          tflint
@@ -87,12 +92,14 @@ jobs:
       - name: Terraform Apply
         env:
           EC2: ${{ inputs.ec2-name }}
+          RDS: ${{ inputs.rds-name }}
           S3_BUCKET: ${{ vars.S3_BUCKET }}
           REGION: ${{ vars.AWS_REGION }}
           ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
         run: |
-          cd ec2
-          echo "ec2_name=\"$EC2\"" >> default.auto.tfvars
+          cd rds
+          echo "ec2_name=\"$EC2\"">> default.auto.tfvars
+          echo "rds_name=\"$RDS\"" >> default.auto.tfvars
           echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
           echo "role_arn=\"${{ vars.ROLE_ARN }}\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
