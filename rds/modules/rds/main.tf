@@ -1,5 +1,5 @@
 resource "aws_rds_cluster" "postgresql" {
-  cluster_identifier      = "${var.rds_name}-${var.environment}"
+  cluster_identifier      = lower("${var.rds_name}-${var.environment}")
   engine                  = "aurora-postgresql"
   availability_zones      = ["us-east-1b"]
   master_username         = var.rds_username
