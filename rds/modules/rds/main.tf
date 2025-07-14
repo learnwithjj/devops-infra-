@@ -6,12 +6,12 @@ resource "aws_rds_cluster" "postgresql" {
   master_password         = var.rds_password
   backup_retention_period = 1
   preferred_backup_window = "07:00-09:00"
-  vpc_security_group_ids  = []
+  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 }
 
 resource "aws_rds_cluster_instance" "cluster_instances" {
   count              = var.instance_count
-  identifier         = "${var.rds_name}-${var.environment}-${count.index}"
+  identifier         = lower("${var.rds_name}-${var.environment}-${count.index}")
   cluster_identifier = aws_rds_cluster.postgresql.id
   instance_class     = "db.t3.micro"
   engine             = aws_rds_cluster.postgresql.engine
@@ -19,10 +19,10 @@ resource "aws_rds_cluster_instance" "cluster_instances" {
 }
 
 resource "aws_db_subnet_group" "default" {
-  name       = "${var.rds_name}-${var.environment}-subnet-group"
+  name       = lower("${var.rds_name}-${var.environment}-subnet-group")
   subnet_ids = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
   tags = {
-    Name = "${var.rds_name}-${var.environment}-subnet-group"
+    Name = lower("${var.rds_name}-${var.environment}-subnet-group")
   }
 }
 
