@@ -28,7 +28,7 @@ variable "rds_password" {
   type    = string
 }
 
-variale "vpc_id" {
+variable "vpc_id" {
   default = ""
   type    = string
 }
