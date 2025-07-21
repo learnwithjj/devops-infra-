@@ -28,7 +28,8 @@ resource "aws_db_subnet_group" "default" {
 
 resource "aws_subnet" "subnet1" {
   vpc_id     = var.vpc_id
-  cidr_block = "10.0.1.0/24"
+  cidr_block = "172.31.0.0//24"
+  availability_zone = var.zones
   tags = {
     Name = "subnet-rds-${var.environment}-1"
   }
@@ -36,7 +37,7 @@ resource "aws_subnet" "subnet1" {
 
 resource "aws_subnet" "subnet2" {
   vpc_id     = var.vpc_id
-  cidr_block = "10.0.1.0/24"
+  cidr_block = "172.31.0.0//24"
   tags = {
     Name = "subnet-rds-${var.environment}-2"
   }
