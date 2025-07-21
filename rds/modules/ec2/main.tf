@@ -2,7 +2,7 @@ resource "aws_instance" "jumpbox" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
   key_name      = "app-ssh-key"
-  subnet_id     = aws_subnet.example.id
+  subnet_id     = aws_subnet.ec2.id
   tags = {
     Name = "${var.ec2_name}-${var.environment}-jumpbox"
   }
