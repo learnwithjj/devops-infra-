@@ -7,6 +7,7 @@ resource "aws_rds_cluster" "postgresql" {
   backup_retention_period = 1
   preferred_backup_window = "07:00-09:00"
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
+  db_subnet_group_name = aws_db_subnet_group.rds.id
 }
 
 resource "aws_rds_cluster_instance" "cluster_instances" {
@@ -18,27 +19,20 @@ resource "aws_rds_cluster_instance" "cluster_instances" {
   engine_version     = aws_rds_cluster.postgresql.engine_version
 }
 
-resource "aws_db_subnet_group" "default" {
-  name       = lower("${var.rds_name}-${var.environment}-subnet-group")
-  subnet_ids = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
+resource "aws_subnet" "rds" {
+  vpc_id     = var.vpc_id
+  cidr_block = "172.31.0.0/24"
+    availability_zone = "us-east-1b"
   tags = {
-    Name = lower("${var.rds_name}-${var.environment}-subnet-group")
+    Name = "subnet-rds-${var.environment}"
   }
 }
 
-resource "aws_subnet" "subnet1" {
-  vpc_id     = var.vpc_id
-  cidr_block = "172.31.0.0/24"
+resource "aws_db_subnet_group" "rds" {
+  name       = "rds-subnet-group-${var.environment}"
+  subnet_ids = aws_subnet.rds[*].id
   tags = {
-    Name = "subnet-rds-${var.environment}-1"
-  }
-}
-
-resource "aws_subnet" "subnet2" {
-  vpc_id     = var.vpc_id
-  cidr_block = "172.31.0.0/24"
-  tags = {
-    Name = "subnet-rds-${var.environment}-2"
+    Name = "rds-subnet-group-${var.environment}"
   }
 }
 
@@ -53,3 +47,4 @@ resource "aws_security_group" "rds_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
