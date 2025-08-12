@@ -30,7 +30,7 @@ resource "aws_subnet" "rds" {
 
 resource "aws_db_subnet_group" "rds" {
   name       = "rds-subnet-group-${var.environment}"
-  subnet_ids = aws_subnet.rds.id
+  subnet_ids = [aws_subnet.rds.id]
   tags = {
     Name = "rds-subnet-group-${var.environment}"
   }
