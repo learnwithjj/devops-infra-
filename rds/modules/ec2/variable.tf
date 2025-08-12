@@ -9,7 +9,10 @@ variable "environment" {
 }
 
 variable "vpc_id" {
- default = ""
- type = string
+  default = ""
+  type    = string
 }
 
+variable "jumpbox_cidr_block" {
+  type    = string
+}

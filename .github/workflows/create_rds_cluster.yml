@@ -103,6 +103,9 @@ jobs:
           echo "rds_name=\"$RDS\"" >> default.auto.tfvars
           echo "ENVIRONMENT=\"$ENVIRONMENT\"" >> default.auto.tfvars
           echo "role_arn=\"${{ vars.ROLE_ARN }}\"" >> default.auto.tfvars
+          echo "rds_username=\"${{ vars.RDS_USERNAME }}\"" >> default.auto.tfvars
+          echo "rds_password=\"${{ vars.RDS_PASSWORD }}\"" >> default.auto.tfvars
+          echo "vpc_id=\"${{ vars.VPC_ID }}\"" >> default.auto.tfvars
           echo "---------------terraform init-------------------"
           terraform init -backend-config="bucket=$S3_BUCKET" \
                -backend-config="key=github/rds/$ENVIRONMENT/terraform.tfstate" \

@@ -18,3 +18,22 @@ variable "instance_count" {
   type    = number
 }
 
+variable "rds_username" {
+  default = ""
+  type    = string
+}
+
+variable "rds_password" {
+  default = ""
+  type    = string
+}
+
+variable "vpc_id" {
+  default = ""
+  type    = string
+}
+
+variable "jumpbox_cidr_block" {
+  default = "25.0.0.0/16"
+  type    = string
+}
