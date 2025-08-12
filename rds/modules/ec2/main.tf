@@ -10,7 +10,7 @@ resource "aws_instance" "jumpbox" {
 
 resource "aws_subnet" "ec2" {
   vpc_id            = var.vpc_id
-  cidr_block        = "172.31.0.0/24"
+  cidr_block        = "172.31.16.0/24"
   availability_zone = "us-east-1b"
   tags = {
     Name = "ec2-subnet-${var.environment}"
