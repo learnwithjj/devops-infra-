@@ -13,3 +13,7 @@ variable "vpc_id" {
   type    = string
 }
 
+variable "jumpbox_cidr_block" {
+  default = ""
+  type    = string
+}
