@@ -34,6 +34,6 @@ variable "vpc_id" {
 }
 
 variable "jumpbox_cidr_block" {
-  default = "25.0.0.0/16"
-  type    = string
+  default = ["25.0.0.0/16"]
+  type    = list(string)
 }

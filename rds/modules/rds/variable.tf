@@ -29,6 +29,5 @@ variable "rds_password" {
 }
 
 variable "jumpbox_cidr_block" {
-  default = ""
-  type    = string
+  type    = list(string)
 }

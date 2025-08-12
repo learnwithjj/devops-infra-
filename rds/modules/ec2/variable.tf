@@ -14,6 +14,5 @@ variable "vpc_id" {
 }
 
 variable "jumpbox_cidr_block" {
-  default = ""
-  type    = string
+  type    = list(string)
 }
