@@ -14,5 +14,5 @@ variable "vpc_id" {
 }
 
 variable "jumpbox_cidr_block" {
-  type    = list(string)
+  type    = string
 }
